@@ -96,7 +96,7 @@ struct ProjectSettingsView: View {
             }
             .padding(20)
         }
-        .frame(width: 450, height: 520)
+        .frame(width: 450, height: 580)
         .onAppear {
             // Determine current preset
             let w = viewModel.projectSettings.width

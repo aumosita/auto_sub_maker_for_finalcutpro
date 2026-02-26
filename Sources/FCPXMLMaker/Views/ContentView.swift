@@ -25,6 +25,28 @@ struct ContentView: View {
                         videoInputSection
                         settingsSection
                         
+                        // Start button
+                        if viewModel.videoURL != nil && viewModel.state == .idle && viewModel.segments.isEmpty {
+                            Button(action: {
+                                Task { await viewModel.startProcessing() }
+                            }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "play.fill")
+                                        .font(.system(size: 16))
+                                    Text("자막 생성 시작")
+                                        .font(.system(size: 16, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.accentColor)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        
                         if viewModel.state != .idle || !viewModel.segments.isEmpty {
                             processingSection
                         }
@@ -364,7 +386,7 @@ struct ContentView: View {
                     HStack {
                         Text(viewModel.state.displayName)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.primary)
                         Spacer()
                         Text("\(Int(viewModel.progress * 100))%")
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
@@ -383,6 +405,15 @@ struct ContentView: View {
                         }
                     }
                     .frame(height: 6)
+                    
+                    if !viewModel.statusDetail.isEmpty {
+                        HStack {
+                            Text(viewModel.statusDetail)
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                    }
                 }
             }
             

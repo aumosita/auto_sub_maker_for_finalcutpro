@@ -31,7 +31,7 @@ final class FCPXMLGenerator {
         
         <fcpxml version="1.11">
             <resources>
-                <format id="r1" name="\(settings.formatName)" frameDuration="\(settings.frameRate.frameDuration)" width="\(settings.width)" height="\(settings.height)"/>
+                <format id="r1" name="\(settings.formatName)" frameDuration="\(settings.frameRate.frameDuration)" width="\(settings.width)" height="\(settings.height)" colorSpace="1-1-1 (Rec. 709)"/>
                 <effect id="r2" name="\(escapeXML(effectName))" uid="\(escapeXML(effectUID))"/>
             </resources>
             <library>

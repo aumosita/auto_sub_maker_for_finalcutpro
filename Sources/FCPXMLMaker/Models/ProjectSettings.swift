@@ -80,6 +80,8 @@ struct ProjectSettings: Codable {
         case hd1080p = "1080p (1920×1080)"
         case uhd4k = "4K (3840×2160)"
         case dci4k = "DCI 4K (4096×2160)"
+        case shorts1080p = "Shorts 1080p (1080×1920)"
+        case shorts4k = "Shorts 4K (2160×3840)"
         case custom = "커스텀"
         
         var size: (width: Int, height: Int)? {
@@ -88,6 +90,8 @@ struct ProjectSettings: Codable {
             case .hd1080p: return (1920, 1080)
             case .uhd4k: return (3840, 2160)
             case .dci4k: return (4096, 2160)
+            case .shorts1080p: return (1080, 1920)
+            case .shorts4k: return (2160, 3840)
             case .custom: return nil
             }
         }
@@ -100,8 +104,24 @@ struct ProjectSettings: Codable {
         return "\(ticks)/\(frameRate.timebaseDenominator)s"
     }
     
-    /// FCPXML format name
+    /// FCPXML format name — must match FCP's built-in format identifiers
     var formatName: String {
-        "FFVideoFormat\(width)x\(height)p\(frameRate.rawValue.replacingOccurrences(of: ".", with: ""))"
+        // FCP uses specific naming conventions for known resolutions
+        let fpsString = frameRate.rawValue.replacingOccurrences(of: ".", with: "")
+        
+        switch (width, height) {
+        case (1280, 720):
+            return "FFVideoFormat720p\(fpsString)"
+        case (1920, 1080):
+            return "FFVideoFormat1080p\(fpsString)"
+        case (3840, 2160):
+            return "FFVideoFormatRateUndefined"
+        case (4096, 2160):
+            return "FFVideoFormatRateUndefined"
+        default:
+            // For non-standard resolutions (shorts, custom), use rate-undefined 
+            // and rely on explicit width/height attributes in the format element
+            return "FFVideoFormatRateUndefined"
+        }
     }
 }

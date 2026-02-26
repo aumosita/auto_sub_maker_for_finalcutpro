@@ -17,6 +17,11 @@ mkdir -p "$RESOURCES_DIR"
 echo "Copying executable..."
 cp ".build/release/$APP_NAME" "$MACOS_DIR/"
 
+echo "Copying icon..."
+if [ -f "AppIcon.icns" ]; then
+    cp AppIcon.icns "$RESOURCES_DIR/AppIcon.icns"
+fi
+
 echo "Generating Info.plist..."
 cat <<PLIST > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -39,6 +44,8 @@ cat <<PLIST > "$CONTENTS_DIR/Info.plist"
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>15.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>
 PLIST

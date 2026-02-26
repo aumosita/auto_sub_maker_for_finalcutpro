@@ -34,9 +34,15 @@ final class AppViewModel: ObservableObject {
     
     // Settings
     @Published var subtitleStyle = SubtitleStyle()
-    @Published var projectSettings = ProjectSettings()
-    @Published var selectedModel: WhisperModel = .small
-    @Published var language: String = "ko"
+    @Published var projectSettings = ProjectSettings() {
+        didSet { saveGeneralSettings() }
+    }
+    @Published var selectedModel: WhisperModel = .small {
+        didSet { saveGeneralSettings() }
+    }
+    @Published var language: String = "ko" {
+        didSet { saveGeneralSettings() }
+    }
     
     // Style Presets
     @Published var savedStyles: [String: SubtitleStyle] = [:]
@@ -49,6 +55,7 @@ final class AppViewModel: ObservableObject {
     // State
     @Published var state: ProcessingState = .idle
     @Published var progress: Double = 0
+    @Published var statusDetail: String = ""
     @Published var segments: [TranscriptionSegment] = []
     @Published var generatedFCPXML: String = ""
     
@@ -65,6 +72,36 @@ final class AppViewModel: ObservableObject {
     init() {
         checkModelAvailability()
         loadStylePresets()
+        loadGeneralSettings()
+    }
+    
+    // MARK: - General Settings Persistence
+    private func loadGeneralSettings() {
+        let d = UserDefaults.standard
+        if let lang = d.string(forKey: "fcpxml_language") {
+            language = lang
+        }
+        if let modelRaw = d.string(forKey: "fcpxml_selectedModel"),
+           let model = WhisperModel(rawValue: modelRaw) {
+            selectedModel = model
+        }
+        if d.object(forKey: "fcpxml_resWidth") != nil {
+            projectSettings.width = d.integer(forKey: "fcpxml_resWidth")
+            projectSettings.height = d.integer(forKey: "fcpxml_resHeight")
+        }
+        if let frRaw = d.string(forKey: "fcpxml_frameRate"),
+           let fr = ProjectSettings.FrameRate(rawValue: frRaw) {
+            projectSettings.frameRate = fr
+        }
+    }
+    
+    private func saveGeneralSettings() {
+        let d = UserDefaults.standard
+        d.set(language, forKey: "fcpxml_language")
+        d.set(selectedModel.rawValue, forKey: "fcpxml_selectedModel")
+        d.set(projectSettings.width, forKey: "fcpxml_resWidth")
+        d.set(projectSettings.height, forKey: "fcpxml_resHeight")
+        d.set(projectSettings.frameRate.rawValue, forKey: "fcpxml_frameRate")
     }
     
     // MARK: - Style Presets Management
@@ -177,10 +214,14 @@ final class AppViewModel: ObservableObject {
             // Step 1: Extract audio
             state = .extractingAudio
             progress = 0
+            statusDetail = "영상에서 음성을 추출하고 있습니다..."
             
             let audioURL = try await audioExtractor.extractAudio(from: videoURL) { [weak self] p in
                 Task { @MainActor in
                     self?.progress = p
+                    if p > 0.5 {
+                        self?.statusDetail = "16kHz 모노 WAV로 변환 중..."
+                    }
                 }
             }
             
@@ -188,18 +229,21 @@ final class AppViewModel: ObservableObject {
             if !WhisperService.isModelDownloaded(selectedModel) {
                 state = .downloadingModel
                 progress = 0
+                statusDetail = "Whisper \(selectedModel.rawValue) 모델을 다운로드하고 있습니다..."
                 
                 try await WhisperService.downloadModel(selectedModel) { [weak self] p in
                     Task { @MainActor in
                         self?.progress = p
+                        self?.statusDetail = "Whisper 모델 다운로드 중... (\(Int(p * 100))%)"
                     }
                 }
                 checkModelAvailability()
             }
             
-            // Step 3: Transcribe
+            // Step 3: Transcribe  
             state = .transcribing
             progress = 0
+            statusDetail = "음성을 텍스트로 변환하고 있습니다 (Whisper \(selectedModel.rawValue))..."
             
             let lang: String? = language == "auto" ? nil : language
             segments = try await whisperService.transcribe(
@@ -209,6 +253,7 @@ final class AppViewModel: ObservableObject {
             ) { [weak self] p in
                 Task { @MainActor in
                     self?.progress = p
+                    self?.statusDetail = "음성 녹취 중... (\(Int(p * 100))%)"
                 }
             }
             
@@ -218,6 +263,7 @@ final class AppViewModel: ObservableObject {
             // Step 4: Generate FCPXML
             state = .generating
             progress = 0.5
+            statusDetail = "FCPXML 자막 파일을 작성하고 있습니다..."
             
             let projectName = videoURL.deletingPathExtension().lastPathComponent + " Subtitles"
             generatedFCPXML = fcpxmlGenerator.generate(
@@ -229,6 +275,7 @@ final class AppViewModel: ObservableObject {
             )
             
             progress = 1.0
+            statusDetail = "자막 \(segments.count)개 세그먼트 생성 완료!"
             state = .completed
             
         } catch {
